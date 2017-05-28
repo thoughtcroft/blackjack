@@ -89,6 +89,7 @@ class Play(object):
 
     def __init__(self):
         self.deck = Deck()
+        self.deck.shuffle()
         self.results = {'wins': 0, 'ties': 0, 'losses': 0}
         self.playing = False
 
@@ -125,7 +126,7 @@ class Play(object):
         return sum(results.values())
 
     def hit(self):
-        self.__deal_card(player)
+        self.__deal_card(self.player)
         if self.player.natural():
             print("Player scored 21! :)")
             self.stand()
@@ -150,19 +151,19 @@ class Play(object):
                 self.results['ties'] += 1
                 break
             else:
-                self.__deal_card(dealer)
+                self.__deal_card(self.dealer)
         playing = False
 
 
 def main():
     """Run the main game loop"""
 
-	# print("""
-    # Welcome to Black Jack!
-    # ----------------------
+    print("""
+    Welcome to Black Jack!
+    ----------------------
 
-    # These are some instructions...
-    # """)
+    These are some instructions...
+    """)
 
     play = Play()
 
