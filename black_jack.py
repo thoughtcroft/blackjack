@@ -9,8 +9,10 @@
 # python2 and python3 portability
 from __future__ import print_function
 from builtins import input
+
 import random
 import sys
+import time
 
 CARD_RANK = ("A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2")
 CARD_SUIT = ("H", "D", "C", "S")
@@ -74,7 +76,6 @@ class Hand(object):
     def show(self):
         print("-> hand {}: {}".format(self.value(), self))
 
-
     def value(self):
         aces = sum(1 for c in self.cards if c.rank == "A")
         value = sum(c.value() for c in self.cards)
@@ -97,7 +98,8 @@ class Play(object):
         card = self.deck.deal()
         hand.add_card(card)
         if announce_move:
-            print("-> card {}".format(card))
+            time.sleep(1)
+            print("> card {} : {} ({})".format(card, hand, hand.value))
 
     def setup(self):
         self.player = Hand()
@@ -105,7 +107,7 @@ class Play(object):
         for _ in range(2):
             self.__deal_card(self.player, False)
             self.__deal_card(self.dealer, False)
-        print("Player initial deal: ", str(self.player))
+        print("Player initial deal: ", self.player)
         print("Dealer face-up card: ", self.dealer.cards[0])
 
         if not(self.player.blackjack() or self.dealer.blackjack()):
@@ -113,12 +115,14 @@ class Play(object):
             self.playing = True
         elif self.player.blackjack():
             if self.dealer.blackjack():
+                print("Dealer checks cards: ", self.dealer)
                 print("Both hands are blackjack - it's a tie")
                 self.results['ties'] += 1
             else:
                 print("Player wins with blackjack!")
                 self.results['wins'] += 1
         elif self.dealer.blackjack():
+                print("Dealer checks cards: ", self.dealer)
                 print("Dealer wins with blackjack!")
                 self.results['losses'] += 1
 
@@ -133,10 +137,11 @@ class Play(object):
         elif self.player.bust():
             print("Player busted! :(")
             self.results['losses'] += 1
-            playing = False
+            self.playing = False
 
     def stand(self):
         print("Dealer's turn...")
+        print("> turn {} : {}".format(self.dealer.cards[-1], self.dealer))
         while True:
             if self.dealer.bust():
                 print("Dealer busted - player wins! :(")
@@ -152,7 +157,8 @@ class Play(object):
                 break
             else:
                 self.__deal_card(self.dealer)
-        playing = False
+
+        self.playing = False
 
 
 def main():
@@ -171,17 +177,24 @@ def main():
         play.setup()
 
         while play.playing:
+            print()
             print("Player: would you like to 'hit'?")
-            if input('> ').lower == 'y':
+            if input('> ').lower() == 'y':
+                print()
                 play.hit()
             else:
+                print()
                 play.stand()
 
+        print()
         print("Would you like to keep playing?")
-        if input('> ').lower != 'y':
+        if input('> ').lower() != 'y':
+            print()
             break
 
+    print()
     print("Thanks for playing. Your results were: {}".format(play.results))
+    print()
 
 if __name__ == '__main__':
     main()
