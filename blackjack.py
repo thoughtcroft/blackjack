@@ -212,7 +212,7 @@ def main():
 
     try:
         while True:
-            input("Hit any key to continue")
+            input("Hit enter key to continue")
             clear_screen()
             print("<--- new round, ctrl-c to exit --->")
             play.setup()
