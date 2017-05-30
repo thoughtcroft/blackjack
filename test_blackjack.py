@@ -50,6 +50,12 @@ class DeckTestCase(unittest.TestCase):
         num_after = len(deck.cards)
         self.assertEqual(num_before, num_after + 1)
 
+    def test_empty_deck_refills(self):
+        """Does an empty deck get refilled?"""
+        deck = Deck()
+        deck.cards = []
+        deck.deal()
+        self.assertEqual(len(deck.cards), 51)
 
 class HandTestCase(unittest.TestCase):
     """Unit tests for Blackjack Hand class"""
@@ -90,6 +96,15 @@ class HandTestCase(unittest.TestCase):
         self.assertTrue(hand.blackjack())
         hand.add_card(Card("10", "♡"))
         self.assertFalse(hand.blackjack())
+
+    def test_twenty_one_detected(self):
+        """Does 'twenty one' get detected correctly?"""
+        hand = Hand()
+        hand.add_card(Card("A", "♡"))
+        hand.add_card(Card("5", "♡"))
+        self.assertFalse(hand.twenty_one())
+        hand.add_card(Card("5", "♡"))
+        self.assertTrue(hand.twenty_one())
 
     def test_bust_detected(self):
         """Does a 'bust' get detected correctly?"""
