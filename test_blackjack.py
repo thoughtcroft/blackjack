@@ -14,7 +14,9 @@ class CardTestCase(unittest.TestCase):
     def test_card_representation(self):
         """Is card representation correct?"""
         card = Card("A", "♡")
-        self.assertEqual(str(card), "A♡")
+        self.assertEqual(str(card), " A♡")
+        card = Card("10", "♡")
+        self.assertEqual(str(card), "10♡")
 
     def test_value_of_card(self):
         """Does card return correct value?"""
@@ -65,7 +67,7 @@ class HandTestCase(unittest.TestCase):
         hand = Hand()
         hand.add_card(Card("A", "♡"))
         hand.add_card(Card("5", "♡"))
-        self.assertEqual(str(hand), "A♡  5♡")
+        self.assertEqual(str(hand), " A♡   5♡")
 
     def test_does_a_new_card_get_added(self):
         """Does a new dealt card end up in the hand?"""

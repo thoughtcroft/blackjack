@@ -28,7 +28,7 @@ class Card(object):  # pylint: disable=too-few-public-methods
         self.suit = suit
 
     def __repr__(self):
-        return "{}{}".format(self.rank, self.suit)
+        return "{:>2}{}".format(self.rank, self.suit)
 
     def value(self):
         """Computes the value of a card according to Blackjack rules"""
@@ -119,7 +119,7 @@ class Play(object):
         hand.add_card(card)
         if announce_move:
             time.sleep(1)
-            print("> dealt {:>3}  for {:>2} : {}".format(card, hand.value(), hand))
+            print("> dealt {}  for {:>2}: {}".format(card, hand.value(), hand))
 
     def setup(self):
         """Deal two cards to the player and the dealer and check for blackjack"""
@@ -129,22 +129,22 @@ class Play(object):
             self.__deal_card(self.player, False)
             self.__deal_card(self.dealer, False)
         print()
-        print("Player initial deal: ", self.player)
-        print("Dealer face-up card: ", self.dealer.cards[0])
+        print("Player initial deal: {}".format(self.player))
+        print("Dealer initial deal: {}   ??".format(self.dealer.cards[0]))
 
         if not(self.player.blackjack() or self.dealer.blackjack()):
             # no-one has won initially, so play the game
             self.playing = True
         elif self.player.blackjack():
             if self.dealer.blackjack():
-                print("Dealer checks cards: ", self.dealer)
+                print("Dealer checks cards: {}".format(self.dealer))
                 print("Both hands are blackjack - it's a tie")
                 self.results['ties'] += 1
             else:
                 print("Player wins with blackjack!")
                 self.results['wins'] += 1
         elif self.dealer.blackjack():
-            print("Dealer checks cards: ", self.dealer)
+            print("Dealer checks cards: {}".format(self.dealer))
             print("Dealer wins with blackjack!")
             self.results['losses'] += 1
 
@@ -152,18 +152,17 @@ class Play(object):
         """Draw another card for the player and determine the outcome if possible"""
         self.__deal_card(self.player)
         if self.player.twenty_one():
-            print("Player scored 21! :)")
+            print("> Player scored 21! :)")
             self.stand()
         elif self.player.bust():
-            print("Player busted! :(")
+            print("> Player busted! :(")
             self.results['losses'] += 1
             self.playing = False
 
     def stand(self):
         """Controls the dealer's turn and determines the outcome of the game"""
-        print()
         print("Dealer's turn...")
-        print("> turns {:>3}  for {:>2} : {}".format(
+        print("> turns {}  for {:>2}: {}".format(
             self.dealer.cards[-1],
             self.dealer.value(),
             self.dealer))
@@ -173,19 +172,23 @@ class Play(object):
         dealer_value = self.dealer.value()
         player_value = self.player.value()
         if self.dealer.bust():
-            print("Dealer busted - player wins :)")
+            print("> Dealer busted - player wins :)")
             self.results['wins'] += 1
         elif dealer_value < player_value:
-            print("Player wins :)")
+            print("> Player wins :)")
             self.results['wins'] += 1
         elif dealer_value == player_value:
-            print("Dealer has same value as Player - it's a tie")
+            print("> Dealer has same value as Player - it's a tie")
             self.results['ties'] += 1
         elif dealer_value > player_value:
-            print("Dealer wins :(")
+            print("> Dealer wins :(")
             self.results['losses'] += 1
         self.playing = False
 
+
+def clear_screen():
+    """Clear the screen before starting a new round"""
+    print("\033[H\033[J")
 
 def main():
     """Run the main game loop"""
@@ -209,25 +212,28 @@ def main():
 
     try:
         while True:
+            input("Hit any key to continue")
+            clear_screen()
+            print("<--- new round, ctrl-c to exit --->")
             play.setup()
 
             while play.playing:
                 print()
-                print("Player: would you like to 'hit'?")
-                if input('> ').lower() == 'y':
+                resp = input("Player would you like to 'hit'? (Y/n): ").upper()
+                print()
+                if resp in ('Y', ''):
                     play.hit()
                 else:
                     play.stand()
-
             print()
-            print("Would you like to keep playing?")
-            if input('> ').lower() != 'y':
-                break
+
     except KeyboardInterrupt:
         print()
     finally:
         print()
-        print("Thanks for playing. Your results were: {}".format(play.results))
+        print("Your results were: {}".format(play.results))
+        print()
+        print("Thanks for playing.")
         print()
 
 if __name__ == '__main__':
