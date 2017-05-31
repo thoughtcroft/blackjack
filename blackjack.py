@@ -109,25 +109,35 @@ class Bank(object):
     def __init__(self, chips=100):
         self.chips = chips
         self.wager = 0
+        self.insurance = 0
 
-    def bet(self, amount):
+    def bet(self, amount, insurance=False):
         """Place a bet, must have this many chips remaining or raises ValueError exception"""
         if amount > self.chips:
             raise ValueError("""
             You can't bet {}. You only have {} chips remaining!
             """.format(amount, self.chips))
+        self.chips -= amount
+        if insurance:
+            self.insurance += amount
         else:
             self.wager += amount
-            self.chips -= amount
 
-    def win(self, odds=1):
+    def win(self, odds=1, insurance=False):
         """Succcessful bet: increments chips by wager at odds"""
-        self.chips += int(self.wager * (1 + odds))
-        self.wager = 0
+        if insurance:
+            self.chips += int(self.insurance * (1 + odds))
+            self.insurance = 0
+        else:
+            self.chips += int(self.wager * (1 + odds))
+            self.wager = 0
 
-    def loss(self):
+    def loss(self, insurance=False):
         """Unsuccessful bet: set wager to zero"""
-        self.wager = 0
+        if insurance:
+            self.insurance = 0
+        else:
+            self.wager = 0
 
     def push(self):
         """Bet is nullified, return chips to the bank"""
@@ -201,6 +211,22 @@ class Play(object):
         print("Player was dealt {:>2} : {}".format(self.player.value(), self.player))
         print("Dealer's first card : {}   ??".format(self.dealer.cards[0]))
 
+        if self.dealer.cards[0].rank == "A":
+            print()
+            while True:
+                try:
+                    bet = input("How much do you want to bet on insurance? (0): ")
+                    if bet == '':
+                        bet = 0
+                    else:
+                        bet = int(bet)
+                    break
+                except ValueError:
+                    pass
+
+            if bet > 0:
+                self.bank.bet(bet, insurance=True)
+
         if not(self.player.blackjack() or self.dealer.blackjack()):
             # no-one has won initially
             self.playing = True
@@ -219,6 +245,15 @@ class Play(object):
             print()
             print("Dealer wins with blackjack!")
             self.loss()
+
+        if self.bank.insurance > 0:
+            print()
+            if self.dealer.blackjack():
+                print("Insurance pays out!")
+                self.bank.win(ratio=2, insurance=True)
+            else:
+                print("Insurance did not pay out")
+                self.bank.loss(insurance=True)
 
     def hit(self, stand=False):
         """Draw another card for the player and determine the outcome if possible"""
