@@ -191,16 +191,27 @@ class Play(object):
         """Player is entitled to double down their initial bet"""
         return self.bank.chips >= self.bank.wager and len(self.player.cards) == 2
 
+    def get_bet(self, question, minimum, multiple):
+        """Ask player for their bet and check constraints on answer"""
+        print()
+        print(question)
+        print("> minimum bet {}, multiples of {} only".format(minimum, multiple))
+        print("> you have {} chips available".format(self.bank.chips))
+        bet = -1
+        while bet < minimum or bet > self.bank.chips or bet % multiple != 0:
+            try:
+                bet = input("Enter amount ({}): ".format(minimum))
+                if bet == '':
+                    bet = minimum
+                else:
+                    bet = int(bet)
+            except ValueError:
+                pass
+        return bet
+
     def setup(self):
         """Deal two cards to the player and the dealer and check for blackjack"""
-        bet = 0
-        while bet <= 0 or bet > self.bank.chips or bet % 2 != 0:
-            print("You have {} chips available".format(self.bank.chips))
-            bet = input("How much do you want to bet (even numbers only)? (10): ")
-            if bet == '':
-                bet = 10
-            else:
-                bet = int(bet)
+        bet = self.get_bet("How much would you like to bet?", 10, 2)
         self.bank.bet(bet)
         self.player = Hand()
         self.dealer = Hand()
@@ -209,21 +220,10 @@ class Play(object):
             self.__deal_card(self.dealer, False)
         print()
         print("Player was dealt {:>2} : {}".format(self.player.value(), self.player))
-        print("Dealer's first card : {}   ??".format(self.dealer.cards[0]))
+        print("Dealer's first card : {}".format(self.dealer.cards[0]))
 
         if self.dealer.cards[0].rank == "A":
-            print()
-            while True:
-                try:
-                    bet = input("How much do you want to bet on insurance? (0): ")
-                    if bet == '':
-                        bet = 0
-                    else:
-                        bet = int(bet)
-                    break
-                except ValueError:
-                    pass
-
+            bet = self.get_bet("Would you like to take insurance?", 0, 2)
             if bet > 0:
                 self.bank.bet(bet, insurance=True)
 
@@ -250,7 +250,7 @@ class Play(object):
             print()
             if self.dealer.blackjack():
                 print("Insurance pays out!")
-                self.bank.win(ratio=2, insurance=True)
+                self.bank.win(odds=2, insurance=True)
             else:
                 print("Insurance did not pay out")
                 self.bank.loss(insurance=True)
