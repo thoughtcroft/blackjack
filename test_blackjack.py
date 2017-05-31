@@ -7,6 +7,8 @@ from blackjack import Card
 from blackjack import Deck
 from blackjack import Hand
 from blackjack import Play
+from blackjack import Bank
+
 
 class CardTestCase(unittest.TestCase):
     """Unit tests for Blackjack Card class"""
@@ -116,6 +118,62 @@ class HandTestCase(unittest.TestCase):
         self.assertFalse(hand.bust())
         hand.add_card(Card("10", "♡"))
         self.assertTrue(hand.bust())
+
+
+class BankTestCase(unittest.TestCase):
+    """Unit tests for Blackjack Bank class"""
+
+    def test_bank_chip_balance(self):
+        """Is the bank balance correct?"""
+        bank = Bank(10)
+        self.assertEqual(bank.chips, 10)
+
+    def test_bank_bet(self):
+        """Does the bank handle a bet correctly?"""
+        bank = Bank(100)
+        bank.bet(10)
+        self.assertEqual(bank.wager, 10)
+        self.assertEqual(bank.chips, 90)
+        with self.assertRaises(ValueError):
+            bank.bet(100)
+
+    def test_bank_win(self):
+        """Does the bank record wins correctly?"""
+        bank = Bank(50)
+        bank.bet(10)
+        bank.win()     # normal win
+        self.assertEqual(bank.wager, 0)
+        self.assertEqual(bank.chips, 60)
+        bank.bet(10)
+        bank.win(1.5)  # blackjack win
+        self.assertEqual(bank.chips, 75)
+
+    def test_bank_loss(self):
+        """Does the bank handle a loss correctly?"""
+        bank = Bank(200)
+        bank.bet(25)
+        bank.loss()
+        self.assertEqual(bank.wager, 0)
+        self.assertEqual(bank.chips, 175)
+
+    def test_bank_double_down(self):
+        """Does the bank handle a double-down bet correctly?"""
+        bank = Bank(100)
+        bank.bet(30)
+        bank.double_down()      # bet another 30
+        self.assertEqual(bank.wager, 60)
+        self.assertEqual(bank.chips, 40)
+        with self.assertRaises(ValueError):
+            bank.double_down()  # bet another 60
+    def test_bank_push(self):
+        """Does the bank handle a push correctly?"""
+        bank = Bank(75)
+        bank.bet(25)
+        self.assertEqual(bank.wager, 25)
+        self.assertEqual(bank.chips, 50)
+        bank.push()
+        self.assertEqual(bank.wager, 0)
+        self.assertEqual(bank.chips, 75)
 
 
 if __name__ == '__main__':

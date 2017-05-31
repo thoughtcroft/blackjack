@@ -103,10 +103,47 @@ class Hand(object):
         return value
 
 
+class Bank(object):
+    """Represents the player's betting pool of money"""
+
+    def __init__(self, chips=100):
+        self.chips = chips
+        self.wager = 0
+
+    def bet(self, amount):
+        """Place a bet, must have this many chips remaining or raises ValueError exception"""
+        if amount > self.chips:
+            raise ValueError("""
+            You can't bet {}. You only have {} chips remaining!
+            """.format(amount, self.chips))
+        else:
+            self.wager += amount
+            self.chips -= amount
+
+    def win(self, odds=1):
+        """Succcessful bet: increments chips by wager at odds"""
+        self.chips += int(self.wager * (1 + odds))
+        self.wager = 0
+
+    def loss(self):
+        """Unsuccessful bet: set wager to zero"""
+        self.wager = 0
+
+    def push(self):
+        """Bet is nullified, return chips to the bank"""
+        self.chips += self.wager
+        self.wager = 0
+
+    def double_down(self):
+        """Player can double their existing bet"""
+        self.bet(self.wager)
+
+
 class Play(object):
     """Controls the flow of the game"""
 
     def __init__(self):
+        self.bank = Bank()
         self.deck = Deck()
         self.deck.shuffle()
         self.results = {'wins': 0, 'ties': 0, 'losses': 0}
@@ -119,50 +156,91 @@ class Play(object):
         hand.add_card(card)
         if announce_move:
             time.sleep(1)
-            print("> dealt {}  for {:>2}: {}".format(card, hand.value(), hand))
+            print("> dealt {}  for {:>2} : {}".format(card, hand.value(), hand))
+
+    def push(self):
+        """Player bet is preserved"""
+        self.bank.push()
+        self.results['ties'] += 1
+
+    def win(self, odds=1):
+        "Player wins at the odds provided"""
+        self.bank.win(odds)
+        self.results['wins'] += 1
+
+    def loss(self):
+        """Player loses their bet"""
+        self.bank.loss()
+        self.results['losses'] += 1
+
+    def insolvent(self):
+        """Does the player have any chips left?"""
+        return self.bank.chips <= 0
+
+    def double_down_available(self):
+        """Player is entitled to double down their initial bet"""
+        return self.bank.chips >= self.bank.wager and len(self.player.cards) == 2
 
     def setup(self):
         """Deal two cards to the player and the dealer and check for blackjack"""
+        bet = 0
+        while bet <= 0 or bet > self.bank.chips or bet % 2 != 0:
+            print("You have {} chips available".format(self.bank.chips))
+            bet = input("How much do you want to bet (even numbers only)? (10): ")
+            if bet == '':
+                bet = 10
+            else:
+                bet = int(bet)
+        self.bank.bet(bet)
         self.player = Hand()
         self.dealer = Hand()
         for _ in range(2):
             self.__deal_card(self.player, False)
             self.__deal_card(self.dealer, False)
         print()
-        print("Player initial deal: {}".format(self.player))
-        print("Dealer initial deal: {}   ??".format(self.dealer.cards[0]))
+        print("Player was dealt {:>2} : {}".format(self.player.value(), self.player))
+        print("Dealer's first card : {}   ??".format(self.dealer.cards[0]))
 
         if not(self.player.blackjack() or self.dealer.blackjack()):
-            # no-one has won initially, so play the game
+            # no-one has won initially
             self.playing = True
         elif self.player.blackjack():
             if self.dealer.blackjack():
-                print("Dealer checks cards: {}".format(self.dealer))
+                print("Dealer checks card  : {}".format(self.dealer))
+                print()
                 print("Both hands are blackjack - it's a tie")
-                self.results['ties'] += 1
+                self.push()
             else:
+                print()
                 print("Player wins with blackjack!")
-                self.results['wins'] += 1
+                self.win(1.5)
         elif self.dealer.blackjack():
-            print("Dealer checks cards: {}".format(self.dealer))
+            print("Dealer checks card  : {}".format(self.dealer))
+            print()
             print("Dealer wins with blackjack!")
-            self.results['losses'] += 1
+            self.loss()
 
-    def hit(self):
+    def hit(self, stand=False):
         """Draw another card for the player and determine the outcome if possible"""
         self.__deal_card(self.player)
         if self.player.twenty_one():
-            print("> Player scored 21! :)")
+            print()
+            print("Player scored 21! :)")
             self.stand()
         elif self.player.bust():
-            print("> Player busted! :(")
-            self.results['losses'] += 1
+            print()
+            print("Player busted! :(")
+            self.loss()
             self.playing = False
+        elif stand:
+            print()
+            self.stand()
 
     def stand(self):
         """Controls the dealer's turn and determines the outcome of the game"""
         print("Dealer's turn...")
-        print("> turns {}  for {:>2}: {}".format(
+        print()
+        print("> turns {}  for {:>2} : {}".format(
             self.dealer.cards[-1],
             self.dealer.value(),
             self.dealer))
@@ -171,65 +249,92 @@ class Play(object):
 
         dealer_value = self.dealer.value()
         player_value = self.player.value()
+        print()
         if self.dealer.bust():
-            print("> Dealer busted - player wins :)")
-            self.results['wins'] += 1
+            print("Dealer busted - player wins :)")
+            self.win()
         elif dealer_value < player_value:
-            print("> Player wins :)")
-            self.results['wins'] += 1
+            print("Player wins :)")
+            self.win()
         elif dealer_value == player_value:
-            print("> Dealer has same value as Player - it's a tie")
-            self.results['ties'] += 1
+            print("Dealer has same value as Player - it's a tie")
+            self.push()
         elif dealer_value > player_value:
-            print("> Dealer wins :(")
-            self.results['losses'] += 1
+            print("Dealer wins :(")
+            self.loss()
         self.playing = False
 
+    def double_down(self):
+        """The player doubles their bet and draws one more card"""
+        self.bank.double_down()
+        self.hit(stand=True)
 
 def clear_screen():
     """Clear the screen before starting a new round"""
     print("\033[H\033[J")
 
+def get_response(question, accepted, default):
+    """Get input that matches the accepted answers"""
+    while True:
+        resp = input(question).upper()
+        if resp == '':
+            resp = default
+        if resp in accepted:
+            break
+    return resp
+
 def main():
     """Run the main game loop"""
-
+    clear_screen()
     print("""
-    Welcome to Blackjack!
-    ----------------------
+          Welcome to Blackjack!
+          ---------------------
 
-    This is the gambling game also known as 21
-    where you play against the computer dealer.
+This is the gambling game also known as 21
+where you play against the computer dealer.
 
-    There is one 52 pack of cards in the deck
-    and the rules are documented here*. Purely
-    for fun, the game tracks your results and
-    and reports them at the conclusion.
+There is one 52 pack of cards in the deck
+and the rules are documented here*. Purely
+for fun, the game tracks your results and
+and reports them at the conclusion.
 
-    * https://en.wikipedia.org/wiki/Blackjack
+* https://en.wikipedia.org/wiki/Blackjack
     """)
 
     play = Play()
 
     try:
         while True:
-            input("Hit enter key to continue")
+            if play.insolvent():
+                break
+            input("Hit enter to continue - ctrl-c to exit: ")
             clear_screen()
-            print("<--- new round, ctrl-c to exit --->")
             play.setup()
 
             while play.playing:
                 print()
-                resp = input("Player would you like to 'hit'? (Y/n): ").upper()
-                print()
-                if resp in ('Y', ''):
-                    play.hit()
+                if play.double_down_available():
+                    question = "Would you like to hit, stand or double down? (H/s/d): "
+                    answers = ('H', 'S', 'D')
                 else:
+                    question = "Would you like to hit or stand? (H/s): "
+                    answers = ('H', 'S')
+                resp = get_response(question, answers, default='H')
+                print()
+                if resp == 'H':
+                    play.hit()
+                elif resp == 'S':
                     play.stand()
+                elif resp == 'D':
+                    play.double_down()
+                else:
+                    raise ValueError
             print()
 
     except KeyboardInterrupt:
         print()
     finally:
+        print("Your bank balance: {}".format(play.bank.chips))
         print()
         print("Your results were: {}".format(play.results))
         print()
