@@ -369,8 +369,8 @@ and reports them at the conclusion.
     except KeyboardInterrupt:
         print()
     finally:
-        print("Your bank balance: {}".format(play.bank.chips))
         print()
+        print("Your bank balance: {}".format(play.bank.chips))
         print("Your results were: {}".format(play.results))
         print()
         print("Thanks for playing.")
