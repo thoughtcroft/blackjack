@@ -1,17 +1,22 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-import unittest
 import sys
-from blackjack import Card
-from blackjack import Deck
-from blackjack import Hand
-from blackjack import Play
-from blackjack import Bank
+import unittest
+
+from blackjack import *
 
 
 class CardTestCase(unittest.TestCase):
     """Unit tests for Blackjack Card class"""
+
+    def test_card_validity(self):
+        """Only valid cards can be created"""
+        card = Card("3","♡")
+        with self.assertRaises(AssertionError):
+            card = Card("13","♡")
+        with self.assertRaises(AssertionError):
+            card = Card("A", "x")
 
     def test_card_representation(self):
         """Is card representation correct?"""
@@ -29,6 +34,13 @@ class CardTestCase(unittest.TestCase):
         card = Card("J", "♡")
         self.assertEqual(card.value(), 10)
 
+    def test_card_is_ace(self):
+        """Is an Ace recognised correctly?"""
+        card = Card("A", "♡")
+        self.assertTrue(card.ace())
+        card = Card("8", "♡")
+        self.assertFalse(card.ace())
+
 
 class DeckTestCase(unittest.TestCase):
     """Unit tests for Blackjack Deck class"""
@@ -40,11 +52,11 @@ class DeckTestCase(unittest.TestCase):
 
     def test_shuffle_randomizes_deck(self):
         """Does the deck get shuffled?"""
-        deck = Deck()
-        card1 = deck.cards[0]
-        deck.shuffle()
-        card2 = deck.cards[0]
-        self.assertIsNot(card1, card2)
+        deck_one = Deck()
+        deck_one.shuffle()
+        deck_two = Deck()
+        deck_two.shuffle()
+        self.assertNotEqual(str(deck_one), str(deck_two))
 
     def test_deal_removes_a_card(self):
         """Does a deal remove one card from the deck?"""
@@ -54,12 +66,18 @@ class DeckTestCase(unittest.TestCase):
         num_after = len(deck.cards)
         self.assertEqual(num_before, num_after + 1)
 
+    def test_deal_returns_a_card(self):
+        """Does calling deal return a card?"""
+        deck = Deck()
+        self.assertIsInstance(deck.deal(), Card)
+
     def test_empty_deck_refills(self):
         """Does an empty deck get refilled?"""
         deck = Deck()
         deck.cards = []
         deck.deal()
         self.assertEqual(len(deck.cards), 51)
+
 
 class HandTestCase(unittest.TestCase):
     """Unit tests for Blackjack Hand class"""
@@ -119,61 +137,90 @@ class HandTestCase(unittest.TestCase):
         hand.add_card(Card("10", "♡"))
         self.assertTrue(hand.bust())
 
+    def test_split_hand(self):
+        """Does a split work for splittable hand?"""
+        card = Card("J", "♡")
+        hand_one = Hand()
+        hand_one.add_card(card)
+        hand_one.add_card(card)
+        hand_one.add_card(Card("5", "♢"))
+        with self.assertRaises(AssertionError):
+            hand_one.split()
+        hand_one.cards.pop()
+        hand_two = hand_one.split()
+        self.assertIsInstance(hand_two, Hand)
+        self.assertTrue(str(hand_one) == str(hand_two))
 
-class BankTestCase(unittest.TestCase):
-    """Unit tests for Blackjack Bank class"""
 
-    def test_bank_chip_balance(self):
-        """Is the bank balance correct?"""
-        bank = Bank(10)
-        self.assertEqual(bank.chips, 10)
+class PlayerTestCase(unittest.TestCase):
+    """Unit tests for the Blackjack Player class"""
 
-    def test_bank_bet(self):
-        """Does the bank handle a bet correctly?"""
-        bank = Bank(100)
-        bank.bet(10)
-        self.assertEqual(bank.wager, 10)
-        self.assertEqual(bank.chips, 90)
-        with self.assertRaises(ValueError):
-            bank.bet(100)
+    def test_player_has_chips(self):
+        """Does the player report chips left correctly?"""
+        player = Player("Wazza", 100)
+        self.assertTrue(player.has_chips())
+        self.assertFalse(player.has_chips(150))
+        player.chips = 0
+        self.assertFalse(player.has_chips())
 
-    def test_bank_win(self):
-        """Does the bank record wins correctly?"""
-        bank = Bank(50)
-        bank.bet(10)
-        bank.win()     # normal win
-        self.assertEqual(bank.wager, 0)
-        self.assertEqual(bank.chips, 60)
-        bank.bet(10)
-        bank.win(1.5)  # blackjack win
-        self.assertEqual(bank.chips, 75)
+    def test_player_can_bet(self):
+        """Is the player able to record a bet?"""
+        player = Player("Wazza", 100)
+        bet = player.bet(10)
+        self.assertEqual(bet, 10)
+        self.assertEqual(player.chips, 90)
 
-    def test_bank_loss(self):
-        """Does the bank handle a loss correctly?"""
-        bank = Bank(200)
-        bank.bet(25)
-        bank.loss()
-        self.assertEqual(bank.wager, 0)
-        self.assertEqual(bank.chips, 175)
+    def test_player_is_able_to_double_down(self):
+        """Does the player report double down is possible correctly?"""
+        player = Player("Wazza", 100)
+        hand = Hand(50)
+        hand.add_card(Card("5", "♢"))
+        hand.add_card(Card("2", "♢"))
+        self.assertTrue(player.can_double_down(hand))
+        player.chips = 0
+        self.assertFalse(player.can_double_down(hand))
+        player.chips = 100
+        hand.add_card(Card("2", "♢"))
+        self.assertTrue(player.can_double_down(hand))
+        hand.add_card(Card("5", "♢"))
+        self.assertFalse(player.can_double_down(hand))
 
-    def test_bank_double_down(self):
-        """Does the bank handle a double-down bet correctly?"""
-        bank = Bank(100)
-        bank.bet(30)
-        bank.double_down()      # bet another 30
-        self.assertEqual(bank.wager, 60)
-        self.assertEqual(bank.chips, 40)
-        with self.assertRaises(ValueError):
-            bank.double_down()  # bet another 60
-    def test_bank_push(self):
-        """Does the bank handle a push correctly?"""
-        bank = Bank(75)
-        bank.bet(25)
-        self.assertEqual(bank.wager, 25)
-        self.assertEqual(bank.chips, 50)
-        bank.push()
-        self.assertEqual(bank.wager, 0)
-        self.assertEqual(bank.chips, 75)
+    def test_player_can_split_hand(self):
+        """Is a splitting a  hand possible?"""
+        player = Player("Wazza", 100)
+        hand = Hand(50)
+        hand.add_card(Card("J", "♡"))
+        hand.add_card(Card("5", "♢"))
+        self.assertFalse(player.can_split(hand))
+        hand.add_card(Card("J", "♡"))
+        self.assertFalse(player.can_split(hand))
+        hand.cards.pop()
+        hand.cards.pop()
+        hand.add_card(Card("J", "♡"))
+        self.assertTrue(player.can_split(hand))
+        player.chips = 0
+        self.assertFalse(player.can_split(hand))
+
+    def test_player_wins_bet(self):
+        """Does the player record wins correctly?"""
+        player = Player("Wazza", 100)
+        player.win(10, 1.5)
+        self.assertTrue(player.chips, 115)
+        self.assertTrue(player.results['wins'], 1)
+
+    def test_player_loses_bet(self):
+        """Does the player record losses correctly?"""
+        player = Player("Wazza", 100)
+        player.loss()
+        self.assertTrue(player.chips, 100)
+        self.assertTrue(player.results['losses'], 1)
+
+    def test_player_pushes_bet(self):
+        """Does the player record pushes correctly?"""
+        player = Player("Wazza", 100)
+        player.push(10)
+        self.assertTrue(player.chips, 110)
+        self.assertTrue(player.results['ties'], 1)
 
 
 if __name__ == '__main__':
