@@ -221,9 +221,9 @@ class Game(object):
                     pass
         return bet
 
-    def players_with_chips(self):
+    def players_with_chips(self, min=0):
         """Returns a list of players with chips remaining"""
-        return list(p for p in self.players if p.has_chips())
+        return list(p for p in self.players if p.has_chips(min))
 
     def active_players(self):
         """Players with active hands"""
@@ -237,9 +237,12 @@ class Game(object):
         """Obtain bets and deal two cards to the player and the dealer"""
         hands = []
         self.playing = True
-        players = self.players_with_chips()
+        min_bet = 10
+        players = self.players_with_chips(min_bet)
+        if not players:
+            return
         for player in players:
-            bet = self.__get_bet(player, "How much would you like to bet?", 10, 2)
+            bet = self.__get_bet(player, "How much would you like to bet?", min_bet, 2)
             hand = Hand(bet)
             hands.append(hand)
             player.bet(bet)
@@ -305,14 +308,14 @@ class Game(object):
         """Decide the outcome of the player's hand compared to the dealer"""
         hand.active = False
         if hand.value() > dealer.value() or dealer.bust():
-            print("{}: you beat the dealer!".format(player.name))
+            print("{}: you beat the dealer! :)".format(player.name))
             if hand.blackjack():
                 odds = 1.5
             else:
                 odds = 1
             player.win(hand.stake, odds)
         elif hand.value() == dealer.value():
-            print("{}: you tied with the dealer".format(player.name))
+            print("{}: you tied with the dealer :|".format(player.name))
             player.push(hand.stake)
         else:
             print("{}: you lost to the dealer :(".format(player.name))
@@ -448,7 +451,7 @@ and reports them at the conclusion.
             print()
             input("Hit enter to continue - ctrl-c to exit: ")
             clear_screen()
-            if not game.players_with_chips():
+            if not game.players_with_chips(10):
                 print("No one with any chips remaining - game over")
                 break
 
@@ -467,10 +470,10 @@ and reports them at the conclusion.
                 print()
                 for player in game.active_players():
                     for hand in player.active_hands():
-                        print("{} has {:<3} : {}".format(player.name, hand.value(), hand))
+                        print("{} has {:>2} : {}".format(player.name.rjust(12), hand.value(), hand))
                         if player.can_split(hand):
                             game.split_hand(player, hand)
-                            print("{} has {:<3} : {}".format(player.name, hand.value(), hand))
+                            print("{} has {:>2} : {}".format(player.name.rjust(12), hand.value(), hand))
 
                         while hand.active:
                             if player.can_double_down(hand):
