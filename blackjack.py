@@ -301,19 +301,18 @@ class Game(object):
         """Check if dealer has blackjack and settle bets accordingly"""
         dealer = self.dealer
         players = self.active_players()
-        if dealer.first().ace():
-            if dealer.blackjack():
-                self.playing = False
-                print()
-                print(self.format_text("Dealer", "scored blackjack : {}".format(dealer)))
-                for player in players:
-                    for hand in player.active_hands():
-                        if player.insurance:
-                            print(self.format_text(
-                                player.name, "you won your insurance bet!", player.color))
-                            player.win(player.insurance, odds=2)
-                        self.settle_outcome(dealer, player, hand)
-            else:
+        if dealer.blackjack():
+            self.playing = False
+            print()
+            print(self.format_text("Dealer", "scored blackjack : {}".format(dealer)))
+            for player in players:
+                for hand in player.active_hands():
+                    if player.insurance:
+                        print(self.format_text(
+                            player.name, "you won your insurance bet!", player.color))
+                        player.win(player.insurance, odds=2)
+                    self.settle_outcome(dealer, player, hand)
+        elif dealer.first().ace():
                 print()
                 print(self.format_text("Dealer", "did not score blackjack"))
                 for player in players:
@@ -357,6 +356,7 @@ class Game(object):
             resp = get_response(prompt, ("Y", "N"), "Y")
             if resp == "Y":
                 new_hand = hand.split()
+                player.bet(hand.stake)
                 self.__deal_card(player.name, hand, player.color)
                 self.__deal_card(player.name, new_hand, player.color)
                 player.hands.append(new_hand)
@@ -393,7 +393,7 @@ class Game(object):
         """Controls the dealer's turn and determines the outcome of the game"""
         dealer = self.dealer
         print()
-        prompt = "turnup {} {:>2} : {}".format(
+        prompt = "turns {}  {:>2} : {}".format(
             dealer.last(),
             dealer.value(),
             dealer)
@@ -401,7 +401,7 @@ class Game(object):
         while dealer.value() < 17:
             self.__deal_card("Dealer", dealer)
         if dealer.bust():
-            print(self.format_text("Dealer", "hand busted!"))
+            print(self.format_text("Dealer", "busted!"))
         for player in self.active_players():
             for hand in player.active_hands():
                 self.settle_outcome(dealer, player, hand)
@@ -410,7 +410,8 @@ class Game(object):
         """Print player statistics"""
         print()
         for player in self.players:
-            prompt = "chips {:>3} and results {}".format(player.chips, player.results)
+            results = ", ".join("{}: {:>2}".format(k, v) for k, v in player.results.items())
+            prompt = "chips: {:>3}, {}".format(player.chips, results)
             print(self.format_text(player.name, prompt, player.color))
 
     def show_hand(self, name, hand, color="white"):
