@@ -14,11 +14,16 @@ from builtins import input
 
 import random
 import time
+from termcolor import colored, COLORS
 
 CARD_RANK = ("A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2")
 CARD_SUIT = ("♡", "♢", "♧", "♤")
+SYSTEM_COLORS = ['grey', 'red', 'white']
+PLAYER_COLORS = list(c for c in COLORS.keys() if c not in SYSTEM_COLORS)
+MAX_PLAYERS = len(PLAYER_COLORS)
 
-class Card(object):  # pylint: disable=too-few-public-methods
+
+class Card(object):
     """Represents an individual playing card"""
 
     def __init__(self, rank, suit):
@@ -129,11 +134,14 @@ class Hand(object):
 class Player(object):
     """Represents a player or the dealer in the game"""
 
-    def __init__(self, name, chips):
+    def __init__(self, name, chips, color='green'):
+        assert chips > 0
+        assert color in PLAYER_COLORS
         self.chips = chips
         self.hands = []
         self.insurance = 0
         self.name = name
+        self.color = color
         self.results = {'wins': 0, 'ties': 0, 'losses': 0}
 
     def can_double_down(self, hand):
@@ -190,28 +198,41 @@ class Game(object):
     def __init__(self, names, chips):
         self.deck = Deck()
         self.deck.shuffle()
-        self.players = list(Player(name, chips) for name in names)
+        self.colors = list(PLAYER_COLORS)
+        self.players = list(Player(name, chips, self.__get_color()) for name in names)
+        self.max_name_len = max(max(len(name) for name in names), len("Dealer"))
         self.playing = False
         self.dealer = None
         self.insurance = False
 
-    def __deal_card(self, hand, announce_move=True):
+    def __get_color(self):
+        """Obtain a random color from available termcolors"""
+        assert self.colors
+        colors = self.colors
+        color = random.choice(colors)
+        colors.remove(color)
+        return color
+
+    def __deal_card(self, name, hand, color="white", announce=True):
+        """Take the next available card from deck and add to hand"""
         card = self.deck.deal()
         hand.add_card(card)
-        if announce_move:
+        if announce:
             time.sleep(1)
-            print("> dealt {}  for {:>2} : {}".format(card, hand.value(), hand))
+            prompt = "dealt {}  {:>2} : {}".format(card, hand.value(), hand)
+            print(self.format_text(name, prompt, color))
 
-    @staticmethod
-    def __get_bet(player, question, minimum, multiple):
+    def __get_bet(self, player, question, minimum, multiple):
         """Ask player for their bet and check constraints on answer"""
         print()
-        print("{}: {}".format(player.name, question.lower()))
-        prompt = "> {} available, {} minimum, multiples of {} only"
-        print(prompt.format(player.chips, minimum, multiple))
+        print(self.format_text(player.name, question.lower(), player.color))
+        prompt = "{} available, {} minimum, multiples of {} only".format(
+            player.chips, minimum, multiple)
+        print(self.format_text(player.name, prompt, player.color))
         bet = -1
         while bet < minimum or bet > player.chips or bet % multiple != 0:
-            bet = input("Enter amount ({}): ".format(minimum))
+            bet = input(self.format_text(
+                player.name, "enter amount ({}): ".format(minimum), player.color))
             if bet == '':
                 bet = minimum
             else:
@@ -220,6 +241,11 @@ class Game(object):
                 except ValueError:
                     pass
         return bet
+
+    def format_text(self, name, text, color="white"):
+        """Prefix output with player's name and colorize"""
+        name = name.rjust(self.max_name_len)
+        return colored("{} > {}".format(name, text), color)
 
     def players_with_chips(self, min=0):
         """Returns a list of players with chips remaining"""
@@ -250,13 +276,14 @@ class Game(object):
         dealer = Hand(0)
         for _ in range(2):
             for hand in hands:
-                self.__deal_card(hand, False)
-            self.__deal_card(dealer, False)
+                self.__deal_card(_, hand, announce=False)
+            self.__deal_card(_, dealer, announce=False)
         print()
         for player in players:
             hand = player.hands[0]
-            print("{} was dealt {:>2} : {}".format(player.name, hand.value(), hand))
-        print("Dealer's first card : {}".format(dealer.first()))
+            prompt = "hand dealt {:>2} : {}".format(hand.value(), hand)
+            print(self.format_text(player.name, prompt, player.color))
+        print(self.format_text("Dealer", "face up card  : {}".format(dealer.first())))
         self.dealer = dealer
 
     def offer_insurance(self):
@@ -264,7 +291,7 @@ class Game(object):
         if self.dealer.first().ace():
             players = self.players_with_chips()
             for player in players:
-                bet = self.__get_bet(player, "Would you like to take insurance?", 0, 2)
+                bet = self.__get_bet(player, "would you like to take insurance?", 0, 2)
                 if bet > 0:
                     player.insurance = player.bet(bet)
                 else:
@@ -278,19 +305,21 @@ class Game(object):
             if dealer.blackjack():
                 self.playing = False
                 print()
-                print("Dealer scored blackjack : {}".format(dealer))
+                print(self.format_text("Dealer", "scored blackjack : {}".format(dealer)))
                 for player in players:
                     for hand in player.active_hands():
                         if player.insurance:
-                            print("{}: you won your insurance bet".format(player.name))
+                            print(self.format_text(
+                                player.name, "you won your insurance bet!", player.color))
                             player.win(player.insurance, odds=2)
                         self.settle_outcome(dealer, player, hand)
             else:
                 print()
-                print("Dealer did not score blackjack")
+                print(self.format_text("Dealer", "did not score blackjack"))
                 for player in players:
                     if player.insurance:
-                        print("{}: you lost your insurance bet".format(player.name))
+                        print(self.format_text(
+                            player.name, "you lost your insurance bet!", player.color))
                         player.loss()
 
     def check_for_player_blackjack(self):
@@ -300,26 +329,26 @@ class Game(object):
         for player in players:
             for hand in player.active_hands():
                 if hand.blackjack():
-                    print("{}: you scored blackjack : {}".format(player.name, hand))
+                    print(self.format_text(player.name, "you scored blackjack!", player.color))
                     self.settle_outcome(dealer, player, hand)
 
-    @staticmethod
-    def settle_outcome(dealer, player, hand):
+    def settle_outcome(self, dealer, player, hand):
         """Decide the outcome of the player's hand compared to the dealer"""
         hand.active = False
         if hand.value() > dealer.value() or dealer.bust():
-            print("{}: you beat the dealer! :)".format(player.name))
+            outcome = "you beat the dealer! :)"
             if hand.blackjack():
                 odds = 1.5
             else:
                 odds = 1
             player.win(hand.stake, odds)
         elif hand.value() == dealer.value():
-            print("{}: you tied with the dealer :|".format(player.name))
+            outcome = "you tied with the dealer :|"
             player.push(hand.stake)
         else:
-            print("{}: you lost to the dealer :(".format(player.name))
+            outcome = "you lost to the dealer :("
             player.loss()
+        print(self.format_text(player.name, outcome, player.color))
 
     def split_hand(self, player, hand):
         """Split player's hand if possible"""
@@ -328,26 +357,26 @@ class Game(object):
             resp = get_response(prompt, ("Y", "N"), "Y")
             if resp == "Y":
                 new_hand = hand.split()
-                self.__deal_card(hand)
-                self.__deal_card(new_hand)
+                self.__deal_card(player.name, hand, player.color)
+                self.__deal_card(player.name, new_hand, player.color)
                 player.hands.append(new_hand)
+                self.show_hand(player.name, hand, player.color)
 
     def hit(self, player, hand):
         """Draw another card for player hand and determine outcome if possible"""
-        self.__deal_card(hand)
+        self.__deal_card(player.name, hand, player.color)
         finished = True
         if hand.twenty_one():
-            print("{}: scored 21! :)".format(player.name))
+            print(self.format_text(player.name, "scored 21! :)", player.color))
         elif hand.bust():
             self.bust(player, hand)
         else:
             finished = False
         return finished
 
-    @staticmethod
-    def bust(player, hand):
+    def bust(self, player, hand):
         """Handle a player's hand that has busted"""
-        print("{}: busted! :(".format(player.name))
+        print(self.format_text(player.name, "busted! :(", player.color))
         player.loss()
         hand.active = False
 
@@ -355,7 +384,7 @@ class Game(object):
         """Player wishes to double their bet and receive one more card"""
         player.bet(hand.stake)
         hand.stake += hand.stake
-        self.__deal_card(hand)
+        self.__deal_card(player.name, hand, player.color)
         if hand.bust():
             self.bust(player, hand)
 
@@ -364,15 +393,15 @@ class Game(object):
         """Controls the dealer's turn and determines the outcome of the game"""
         dealer = self.dealer
         print()
-        print("Dealer's turn...")
-        print("> turns {}  for {:>2} : {}".format(
+        prompt = "turnup {} {:>2} : {}".format(
             dealer.last(),
             dealer.value(),
-            dealer))
+            dealer)
+        print(self.format_text("Dealer", prompt))
         while dealer.value() < 17:
-            self.__deal_card(dealer)
+            self.__deal_card("Dealer", dealer)
         if dealer.bust():
-            print("Dealer busted!")
+            print(self.format_text("Dealer", "hand busted!"))
         for player in self.active_players():
             for hand in player.active_hands():
                 self.settle_outcome(dealer, player, hand)
@@ -381,8 +410,39 @@ class Game(object):
         """Print player statistics"""
         print()
         for player in self.players:
-            print("{}:  chips {} and results {}".format(player.name, player.chips, player.results))
+            prompt = "chips {:>3} and results {}".format(player.chips, player.results)
+            print(self.format_text(player.name, prompt, player.color))
 
+    def show_hand(self, name, hand, color="white"):
+        """Print player's current hand"""
+        print()
+        prompt = "hand value {:>2} : {}".format(hand.value(), hand)
+        print(self.format_text(name, prompt, color))
+
+    def play_hand(self, player, hand):
+        """Play the hand until finished"""
+        self.show_hand(player.name, hand, player.color)
+        if player.can_split(hand):
+            self.split_hand(player, hand)
+        while hand.active:
+            if player.can_double_down(hand):
+                question = "would you like to hit, stand or double down? (H/s/d): "
+                answers = ('H', 'S', 'D')
+            else:
+                question = "would you like to hit or stand? (H/s): "
+                answers = ('H', 'S')
+            prompt = self.format_text(player.name, question, player.color)
+            resp = get_response(prompt, answers, default='H')
+            if resp == 'H':
+                if self.hit(player, hand):
+                    break
+            elif resp == 'S':
+                break
+            elif resp == 'D':
+                self.double_down(player, hand)
+                break
+            else:
+                raise ValueError
 
 def clear_screen():
     """Clear the screen before starting a new round"""
@@ -467,32 +527,9 @@ and reports them at the conclusion.
             if game.playing:
 
                 # - then for each player's hand:
-                print()
                 for player in game.active_players():
                     for hand in player.active_hands():
-                        print("{} has {:>2} : {}".format(player.name.rjust(12), hand.value(), hand))
-                        if player.can_split(hand):
-                            game.split_hand(player, hand)
-                            print("{} has {:>2} : {}".format(player.name.rjust(12), hand.value(), hand))
-
-                        while hand.active:
-                            if player.can_double_down(hand):
-                                question = "Would you like to hit, stand or double down? (H/s/d): "
-                                answers = ('H', 'S', 'D')
-                            else:
-                                question = "Would you like to hit or stand? (H/s): "
-                                answers = ('H', 'S')
-                            resp = get_response(question, answers, default='H')
-                            if resp == 'H':
-                                if game.hit(player, hand):
-                                    break
-                            elif resp == 'S':
-                                break
-                            elif resp == 'D':
-                                game.double_down(player, hand)
-                                break
-                            else:
-                                raise ValueError
+                        game.play_hand(player, hand)
 
                 # - then dealer plays until busts or stands
                 if game.active_hands():
