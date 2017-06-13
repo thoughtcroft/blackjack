@@ -205,22 +205,90 @@ class PlayerTestCase(unittest.TestCase):
         """Does the player record wins correctly?"""
         player = Player("Wazza", 100)
         player.win(10, 1.5)
-        self.assertTrue(player.chips, 115)
-        self.assertTrue(player.results['wins'], 1)
+        self.assertEqual(player.chips, 125)
+        self.assertEqual(player.results['wins'], 1)
 
     def test_player_loses_bet(self):
         """Does the player record losses correctly?"""
         player = Player("Wazza", 100)
         player.loss()
-        self.assertTrue(player.chips, 100)
-        self.assertTrue(player.results['losses'], 1)
+        self.assertEqual(player.chips, 100)
+        self.assertEqual(player.results['losses'], 1)
 
     def test_player_pushes_bet(self):
         """Does the player record pushes correctly?"""
         player = Player("Wazza", 100)
         player.push(10)
-        self.assertTrue(player.chips, 110)
-        self.assertTrue(player.results['ties'], 1)
+        self.assertEqual(player.chips, 110)
+        self.assertEqual(player.results['ties'], 1)
+
+    def test_available_hand_generator(self):
+        """Available hands should adjust by status"""
+        player = Player("Wazza", 100)
+        hand_1 = Hand(10)
+        hand_2 = Hand(20)
+        hand_3 = Hand(30)
+        player.hands = [hand_1, hand_2, hand_3]
+        result = player.active_hands()
+        self.assertEqual(next(result), hand_1)
+        hand_2.active = False
+        self.assertEqual(next(result), hand_3)
+
+
+class GameTestCase(unittest.TestCase):
+    """Unit tests for the Blackjack Game class"""
+
+    def test_new_game_creates_players(self):
+        """Is the player collection initialised?"""
+        names = "foo bar baz".split()
+        chips = 10
+        game = Game(names, chips)
+        self.assertEqual(len(game.players), 3)
+        self.assertEqual(game.players[0].name, names[0])
+
+    def test_max_name_len_calculated(self):
+        """Does the longest name get correctly calculated"""
+        names = "foo bar wazza".split()
+        game = Game(names, 100)
+        self.assertEqual(game.max_name_len, len("Dealer"))
+        names = "foo bar wazza verylongname".split()
+        game = Game(names, 100)
+        self.assertEqual(game.max_name_len, len("verylongname"))
+
+    def test_format_text(self):
+        """Format text produces desired output"""
+        game = Game(['foo'], 100)
+        blue = "\x1b[34m"
+        stop = "\x1b[0m"
+        resp = game.format_text('foo', 'testing', 'blue')
+        test = "{}{} > {}{}".format(blue, 'foo'.rjust(len("Dealer")), 'testing', stop)
+        self.assertEqual(resp, test)
+
+    def test_players_with_chips(self):
+        """Test list of players with remaining chips"""
+        game = Game(['foo'], 100)
+        self.assertTrue(game.players_with_chips())
+        player = game.players[0]
+        player.chips = 0
+        self.assertFalse(game.players_with_chips())
+
+    def test_active_players(self):
+        """Test that players with active hands works"""
+        game = Game(['foo', 'bar', 'baz'], 100)
+        for player in game.players:
+            player.hands.append(Hand(10))
+        result = game.active_players()
+        self.assertEqual(next(result).name, 'foo')
+        game.players[1].hands[0].active = False
+        self.assertEqual(next(result).name, 'baz')
+
+    def test_has_active_hands(self):
+        """Test that we can detetc active hands"""
+        game = Game(['foo'], 100)
+        game.players[0].hands.append(Hand(10))
+        self.assertTrue(game.has_active_hands())
+        game.players[0].hands[0].active = False
+        self.assertFalse(game.has_active_hands())
 
 
 if __name__ == '__main__':

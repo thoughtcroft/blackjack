@@ -156,6 +156,10 @@ class Player(object):
             if hand.active:
                 yield hand
 
+    def has_active_hands(self):
+        """Does the player have any active hands?"""
+        return list(h for h in self.hands if h.active)
+
     def can_split(self, hand):
         """Is the player entitled to split their hand?"""
         return self.has_chips(hand.stake) and hand.pair()
@@ -252,12 +256,14 @@ class Game(object):
         return list(p for p in self.players if p.has_chips(min))
 
     def active_players(self):
-        """Players with active hands"""
-        return list(p for p in self.players if p.active_hands())
+        """Generator of layers with active hands"""
+        for player in self.players:
+            if player.has_active_hands():
+                yield player
 
-    def active_hands(self):
-        """List of active hands remaining"""
-        return list(h for p in self.players for h in p.active_hands())
+    def has_active_hands(self):
+        """Are there any active hands remaining?"""
+        return list(p for p in self.players if p.has_active_hands())
 
     def setup(self):
         """Obtain bets and deal two cards to the player and the dealer"""
@@ -533,7 +539,7 @@ and reports them at the conclusion.
                         game.play_hand(player, hand)
 
                 # - then dealer plays until busts or stands
-                if game.active_hands():
+                if game.has_active_hands():
                     game.dealer_turn()
 
     except KeyboardInterrupt:
