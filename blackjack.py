@@ -178,7 +178,7 @@ class Player(object):
         self.results['ties'] += 1
 
     def win(self, bet, odds=1):
-        "Player wins at the odds provided"""
+        """Player wins at the odds provided"""
         assert bet > 0
         assert odds >= 1
         self.chips += int(bet * (odds + 1))
@@ -501,11 +501,18 @@ and reports them at the conclusion.
 
     # collect names of the players and their starting chip balance
     print()
-    names = input("Enter player names or enter for single player game: ")
-    if names == '':
-        names = ["Player"]
-    else:
-        names = names.split(' ')
+    while True:
+        prompt = "Enter up to {} player names or return for single player game: ".format(MAX_PLAYERS)
+        names = input(prompt)
+        if names == '':
+            names = ["Player"]
+        else:
+            names = names.split(' ')
+        if len(names) > MAX_PLAYERS:
+            print("Maximum of {} players only please!".format(MAX_PLAYERS))
+        else:
+            break
+
     print()
     chips = input("Enter starting number of chips (100): ")
     if chips == '':
