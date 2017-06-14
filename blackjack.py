@@ -5,7 +5,7 @@
 """Blackjack Game
 
 The playing card gambling game also known as 21.
-For one player against the computer dealer.
+For one or many players against the computer dealer.
 """
 
 # python2 and python3 portability
@@ -474,7 +474,8 @@ def main():
           ---------------------
 
 This is the gambling game also known as 21
-where you play against the computer dealer.
+where you and others can play against the
+computer dealer.
 
 There is one 52 pack of cards in the deck
 and the rules are documented here*. Purely
