@@ -270,6 +270,7 @@ class Game(object):
         hands = []
         self.playing = True
         min_bet = 10
+        random.shuffle(self.players)
         players = self.players_with_chips(min_bet)
         if not players:
             return
