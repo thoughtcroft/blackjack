@@ -18,7 +18,7 @@ from termcolor import colored, COLORS
 
 CARD_RANK = ("A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2")
 CARD_SUIT = ("♡", "♢", "♧", "♤")
-SYSTEM_COLORS = ['grey', 'red', 'white']
+SYSTEM_COLORS = ['grey', 'white']
 PLAYER_COLORS = list(c for c in COLORS.keys() if c not in SYSTEM_COLORS)
 MAX_PLAYERS = len(PLAYER_COLORS)
 
@@ -359,7 +359,8 @@ class Game(object):
     def split_hand(self, player, hand):
         """Split player's hand if possible"""
         if hand.pair() and player.has_chips(hand.stake):
-            prompt = "{}: would you like to split your pair? (Y/n): ".format(player.name)
+            prompt = "would you like to split your pair? (Y/n): "
+            prompt = self.format_text(player.name, prompt, player.color)
             resp = get_response(prompt, ("Y", "N"), "Y")
             if resp == "Y":
                 new_hand = hand.split()
