@@ -417,9 +417,10 @@ class Game(object):
     def results(self):
         """Print player statistics"""
         print()
-        for player in self.players:
-            results = ", ".join("{}: {:>2}".format(k, v) for k, v in player.results.items())
-            prompt = "chips: {:>3}, {}".format(player.chips, results)
+        players = sorted(self.players, key=lambda x: x.chips, reverse=True)
+        for player in players:
+            results = ",  ".join("{}: {:>2}".format(k, v) for k, v in player.results.items())
+            prompt = "chips: {:>3},  {}".format(player.chips, results)
             print(self.format_text(player.name, prompt, player.color))
 
     def show_hand(self, name, hand, color="white"):
