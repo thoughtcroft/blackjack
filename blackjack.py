@@ -320,13 +320,13 @@ class Game(object):
                         player.win(player.insurance, odds=2)
                     self.settle_outcome(dealer, player, hand)
         elif dealer.first().ace():
-                print()
-                print(self.format_text("Dealer", "did not score blackjack"))
-                for player in players:
-                    if player.insurance:
-                        print(self.format_text(
-                            player.name, "you lost your insurance bet!", player.color))
-                        player.loss()
+            print()
+            print(self.format_text("Dealer", "did not score blackjack"))
+            for player in players:
+                if player.insurance:
+                    print(self.format_text(
+                        player.name, "you lost your insurance bet!", player.color))
+                    player.loss()
 
     def check_for_player_blackjack(self):
         """Check if any player has blackjack and settle bets accordingly"""
@@ -373,14 +373,6 @@ class Game(object):
     def hit(self, player, hand):
         """Draw another card for player hand and determine outcome if possible"""
         self.__deal_card(player.name, hand, player.color)
-        finished = True
-        if hand.twenty_one():
-            print(self.format_text(player.name, "scored 21! :)", player.color))
-        elif hand.bust():
-            self.bust(player, hand)
-        else:
-            finished = False
-        return finished
 
     def bust(self, player, hand):
         """Handle a player's hand that has busted"""
@@ -434,13 +426,21 @@ class Game(object):
         self.show_hand(player.name, hand, player.color)
         if player.can_split(hand):
             self.split_hand(player, hand)
+
         while hand.active:
+            if hand.twenty_one():
+                print(self.format_text(player.name, "scored 21! :)", player.color))
+                break
+            if hand.bust():
+                self.bust(player, hand)
+                break
             if player.can_double_down(hand):
                 question = "would you like to hit, stand or double down? (H/s/d): "
                 answers = ('H', 'S', 'D')
             else:
                 question = "would you like to hit or stand? (H/s): "
                 answers = ('H', 'S')
+
             prompt = self.format_text(player.name, question, player.color)
             resp = get_response(prompt, answers, default='H')
             if resp == 'H':
@@ -452,6 +452,7 @@ class Game(object):
                 self.double_down(player, hand)
                 break
             else:
+                # should never get here!
                 raise ValueError
 
 def clear_screen():
