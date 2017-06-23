@@ -413,9 +413,8 @@ class Game(object):
         players = sorted(self.players,
                          reverse=True,
                          key=lambda x: (x.chips,
-                                        x.results['wins'],
-                                        -x.results['losses'],
-                                        x.results['ties']))
+                                        x.results['wins']*3 + x.results['ties'],
+                                        -x.results['losses']))
         for player in players:
             results = ",  ".join("{}: {:>2}".format(k, v) for k, v in player.results.items())
             prompt = "chips: {:>3},  {}".format(player.chips, results)
@@ -426,6 +425,15 @@ class Game(object):
         print()
         prompt = "hand value {:>2} : {}".format(hand.value(), hand)
         print(self.format_text(name, prompt, color))
+
+    def play_hands(self):
+        """Play any active hands until completed"""
+        if self.playing:
+            for player in self.active_players():
+                for hand in player.active_hands():
+                    self.play_hand(player, hand)
+            if self.has_active_hands():
+                self.dealer_turn()
 
     def play_hand(self, player, hand):
         """Play the hand until finished"""
@@ -462,8 +470,14 @@ class Game(object):
                 raise ValueError
 
 def clear_screen():
-    """Clear the screen before starting a new round"""
+    """Clear the screen for better view"""
     print("\033[H\033[J")
+
+def continue_prompt():
+    """Clear the screen before starting a new round"""
+    print()
+    input("Hit enter to continue - ctrl-c to exit: ")
+    clear_screen()
 
 def get_response(question, accepted, default):
     """Get input that matches the accepted answers"""
@@ -474,6 +488,29 @@ def get_response(question, accepted, default):
         if resp in accepted:
             break
     return resp
+
+def start_game():
+    """Obtain player names and starting chips"""
+    while True:
+        prompt = "Enter up to {} player names or return for single player game: "
+        names = input(prompt.format(MAX_PLAYERS))
+        if names == '':
+            names = ["Player"]
+        else:
+            names = names.split(' ')
+        if len(names) > MAX_PLAYERS:
+            print("Maximum of {} players only please!".format(MAX_PLAYERS))
+        else:
+            break
+
+    print()
+    chips = input("Enter starting number of chips (100): ")
+    if chips == '':
+        chips = 100
+    else:
+        chips = int(chips)
+    return Game(names, chips)
+
 
 def main():
     """Run the main game loop"""
@@ -509,61 +546,27 @@ and reports them at the conclusion.
     # when game is complete show results for each player
 
     # collect names of the players and their starting chip balance
-    print()
-    while True:
-        prompt = "Enter up to {} player names or return for single player game: ".format(MAX_PLAYERS)
-        names = input(prompt)
-        if names == '':
-            names = ["Player"]
-        else:
-            names = names.split(' ')
-        if len(names) > MAX_PLAYERS:
-            print("Maximum of {} players only please!".format(MAX_PLAYERS))
-        else:
-            break
 
-    print()
-    chips = input("Enter starting number of chips (100): ")
-    if chips == '':
-        chips = 100
-    else:
-        chips = int(chips)
-    game = Game(names, chips)
-
-    # then cycle through game process:
     try:
+        print()
+        game = start_game()
+
         while True:
-            print()
-            input("Hit enter to continue - ctrl-c to exit: ")
-            clear_screen()
+            continue_prompt()
             if not game.players_with_chips(10):
                 print("No one with any chips remaining - game over")
                 break
-
-            # - collect initial bets and deal cards
             game.setup()
-
-            # - offer insurance if dealer up card is an Ace
             game.offer_insurance()
-
-            # - if anyone has blackjack announce results
             game.check_for_dealer_blackjack()
             game.check_for_player_blackjack()
-            if game.playing:
-
-                # - then for each player's hand:
-                for player in game.active_players():
-                    for hand in player.active_hands():
-                        game.play_hand(player, hand)
-
-                # - then dealer plays until busts or stands
-                if game.has_active_hands():
-                    game.dealer_turn()
+            game.play_hands()
 
     except KeyboardInterrupt:
         print()
     finally:
-        game.results()
+        if game:
+            game.results()
         print()
         print("Thanks for playing.")
         print()
