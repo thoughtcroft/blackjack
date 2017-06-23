@@ -389,7 +389,6 @@ class Game(object):
         if hand.bust():
             self.bust(player, hand)
 
-
     def dealer_turn(self):
         """Controls the dealer's turn and determines the outcome of the game"""
         dealer = self.dealer
@@ -510,7 +509,6 @@ def start_game():
     else:
         chips = int(chips)
     return Game(names, chips)
-
 
 def main():
     """Run the main game loop"""
