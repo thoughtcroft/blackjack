@@ -275,6 +275,7 @@ class Game(object):
         if not players:
             return
         for player in players:
+            player.insurance = 0
             bet = self.__get_bet(player, "How much would you like to bet?", min_bet, 2)
             hand = Hand(bet)
             hands.append(hand)
@@ -409,7 +410,12 @@ class Game(object):
     def results(self):
         """Print player statistics"""
         print()
-        players = sorted(self.players, key=lambda x: x.chips, reverse=True)
+        players = sorted(self.players,
+                         reverse=True,
+                         key=lambda x: (x.chips,
+                                        x.results['wins'],
+                                        -x.results['losses'],
+                                        x.results['ties']))
         for player in players:
             results = ",  ".join("{}: {:>2}".format(k, v) for k, v in player.results.items())
             prompt = "chips: {:>3},  {}".format(player.chips, results)
